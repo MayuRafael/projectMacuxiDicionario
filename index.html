@@ -35,7 +35,7 @@
         // =================================================================================
         const config = {
             supabaseUrl: 'https://xujtmchbobzekplacyct.supabase.co',
-            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1anRtY2hib2J6ZWtwbGFjeWN0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjA1NDY5OSwiZXhwIjoyMDg3NjMwNjk5fQ.bx8pbwBksKyQNj0l0KC3UlrzyGXywXkaGsOisn-i_GM',
+            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1anRtY2hib2J6ZWtwbGFjeWN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNTQ2OTksImV4cCI6MjA4NzYzMDY5OX0.WSzC6_rOgsrtEPMoGBXBq-L2a1m3-NT_dl76k76nps8',
             tableName: 'tabela_verbetes'
         };
 
@@ -155,12 +155,14 @@
             }, []);
 
             const filteredWords = useMemo(() => {
-                const lowerCaseSearchTerm = searchTerm.toLowerCase();
-                return allWords.filter(word =>
-                    (word.macuxi && word.macuxi.toLowerCase().startsWith(lowerCaseSearchTerm)) ||
-                    (word.traducao_portugues && word.traducao_portugues.toLowerCase().startsWith(lowerCaseSearchTerm))
-                );
-            }, [searchTerm, allWords]);
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+
+    return allWords.filter(word =>
+        word.macuxi &&
+        word.macuxi.toLowerCase().startsWith(lowerCaseSearchTerm)
+    );
+
+}, [searchTerm, allWords]);
             
             const [selectedWord, setSelectedWord] = useState(null);
 
@@ -220,9 +222,10 @@
         };
 
         // --- COMPONENTE PRINCIPAL ---
-        const App = () => {
-            const [currentPage, setCurrentPage] = useState('landing');
-            const [initialSearch, setInitialSearch] = useState('');
+       const App = () => {
+    const [currentPage, setCurrentPage] = useState('landing');
+    const [initialSearch, setInitialSearch] = useState('');
+    const [searchMode, setSearchMode] = useState('all');
 
             const pageRender = () => {
                 switch(currentPage) {
