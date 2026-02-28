@@ -1,248 +1,398 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dicionário Macuxi</title>
-    <!-- Carrega o Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Carrega o React -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Carrega o Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Carrega o Cliente do Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dicionário Macuxi</title>
 
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-    </style>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
 </head>
+
 <body class="bg-[#f4f1e9]">
+  <div id="root"></div>
 
-    <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+    const { createClient } = supabase;
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-        const { createClient } = supabase;
+    // =================================================================================
+    // CONFIGURAÇÃO CENTRALIZADA
+    // =================================================================================
+    const config = {
+      supabaseUrl: 'https://xujtmchbobzekplacyct.supabase.co',
+      supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1anRtY2hib2J6ZWtwbGFjeWN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNTQ2OTksImV4cCI6MjA4NzYzMDY5OX0.WSzC6_rOgsrtEPMoGBXBq-L2a1m3-NT_dl76k76nps8',
+      tableName: 'tabela_verbetes'
+    };
 
-        // =================================================================================
-        // CONFIGURAÇÃO CENTRALIZADA
-        // =================================================================================
-        const config = {
-            supabaseUrl: 'https://xujtmchbobzekplacyct.supabase.co',
-            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1anRtY2hib2J6ZWtwbGFjeWN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNTQ2OTksImV4cCI6MjA4NzYzMDY5OX0.WSzC6_rOgsrtEPMoGBXBq-L2a1m3-NT_dl76k76nps8',
-            tableName: 'tabela_verbetes'
-        };
+    const supabaseClient = createClient(config.supabaseUrl, config.supabaseAnonKey);
 
-        const supabaseClient = createClient(config.supabaseUrl, config.supabaseAnonKey);
-        
-        // =================================================================================
-        // COMPONENTES DE UI REUTILIZÁVEIS
-        // =================================================================================
-        const Icon = ({ name }) => {
-            const icons = {
-                search: (<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute top-1/2 right-4 -translate-y-1/2 text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>),
-                book: (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>),
-                volume: (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block ml-2 text-gray-400"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>)
-            };
-            return icons[name] || null;
-        };
+    // =================================================================================
+    // COMPONENTES DE UI REUTILIZÁVEIS
+    // =================================================================================
+    const Icon = ({ name }) => {
+      const icons = {
+        search: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round"
+            className="absolute top-1/2 right-4 -translate-y-1/2 text-gray-400">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        ),
+        book: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+        ),
+        volume: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round"
+            className="inline-block ml-2 text-gray-400">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+        )
+      };
+      return icons[name] || null;
+    };
 
-        const Button = ({ onClick, children, className }) => (
-            <button onClick={onClick} className={`font-bold py-2 px-4 rounded-lg transition-colors ${className}`}>
-                {children}
-            </button>
-        );
-
-        // =================================================================================
-        // COMPONENTES PRINCIPAIS DA APLICAÇÃO
-        // =================================================================================
-        const Header = ({ onBackToHome }) => (
-            <header className="bg-[#8B4513] text-white p-4 shadow-md flex justify-between items-center">
-                <h1 className="text-xl md:text-2xl font-bold">Dicionário Macuxi</h1>
-                <Button onClick={onBackToHome} className="text-sm hover:underline">Voltar ao Início</Button>
-            </header>
-        );
-        
-        const WordList = ({ words, onSelectWord, selectedWord, loading, error }) => (
-            <div className="md:col-span-1 bg-white p-6 rounded-2xl shadow-lg h-full max-h-[70vh] overflow-y-auto">
-                <h2 className="text-2xl font-bold mb-4 border-b-2 border-gray-200 pb-2">Palavras</h2>
-                {loading && <p className="text-gray-500">A carregar palavras...</p>}
-                {error && <p className="text-red-600 font-semibold">{error}</p>}
-                {!loading && !error && (
-                    <div className="space-y-2">
-                        {words.length > 0 ? (words.map(word => (
-                            <div key={word.id} onClick={() => onSelectWord(word)} className={`p-4 rounded-lg cursor-pointer border transition-all duration-200 ${selectedWord && selectedWord.id === word.id ? 'bg-yellow-100 border-yellow-300' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
-                                <h3 className="font-bold text-lg text-[#8B4513] flex items-center">
-                                    {word.macuxi}
-                                    {word.audio_url && <Icon name="volume" />}
-                                </h3>
-                                <p className="text-gray-600">{word.traducao_portugues}</p>
-                            </div>
-                        ))) : (<p className="text-gray-500">Nenhuma palavra encontrada.</p>)}
-                    </div>
-                )}
-            </div>
-        );
-
-        const WordDetail = ({ word }) => {
-            if (!word) { return (<div className="md:col-span-2 bg-white p-8 rounded-2xl shadow-lg flex items-center justify-center"><p className="text-xl text-gray-500">Selecione uma palavra na lista.</p></div>); }
-            return (
-                <div className="md:col-span-2 bg-white p-8 rounded-2xl shadow-lg">
-                    <div className="text-center mb-6">
-                        <p className="text-lg font-semibold text-yellow-800 bg-yellow-200 rounded-full px-4 py-1 mb-4 inline-block">{word.classe_gramatical}</p>
-                        <h2 className="text-5xl md:text-6xl font-bold text-[#8B4513] mb-2">{word.macuxi}</h2>
-                        <p className="text-3xl text-gray-700">{word.traducao_portugues}</p>
-                        {word.ingles && <p className="text-2xl text-gray-500 mt-1">({word.ingles})</p>}
-                    </div>
-                    {word.audio_url && (<div className="mb-6"><h3 className="font-bold text-lg mb-2 text-gray-700">Pronúncia</h3><audio controls key={word.id} className="w-full" src={word.audio_url}>O seu navegador não suporta o elemento de áudio.</audio></div>)}
-                    {(word.exemplo_macuxi || word.exemplo_portugues) && (<div><h3 className="font-bold text-lg mb-2 text-gray-700">Exemplo de Uso</h3><div className="bg-gray-100 p-4 rounded-lg text-left"><p className="text-lg italic text-gray-800">"{word.exemplo_macuxi}"</p><p className="text-md text-gray-600 mt-1">"{word.exemplo_portugues}"</p></div></div>)}
-                </div>
-            );
-        };
-
-        const DictionaryPage = ({ onBackToHome, initialSearch }) => {
-            const [allWords, setAllWords] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [error, setError] = useState(null);
-            const [searchTerm, setSearchTerm] = useState('');
-            
-            useEffect(() => { setSearchTerm(initialSearch || ''); }, [initialSearch]);
-            
-            useEffect(() => {
-                const fetchAllWords = async () => {
-                    setLoading(true);
-                    setError(null);
-                    let allData = [];
-                    let from = 0;
-                    const chunkSize = 1000;
-
-                    while (true) {
-                        const { data, error: fetchError } = await supabaseClient
-                            .from(config.tableName)
-                            .select('*')
-                            .order('macuxi', { ascending: true })
-                            .range(from, from + chunkSize - 1);
-
-                        if (fetchError) {
-                            console.error('Erro ao buscar palavras:', fetchError);
-                            setError(`Falha ao buscar palavras. Verifique o nome da tabela ('${config.tableName}') e as permissões (RLS).`);
-                            setLoading(false);
-                            return;
-                        }
-
-                        if (data) {
-                            allData = [...allData, ...data];
-                            if (data.length < chunkSize) {
-                                break;
-                            }
-                            from += chunkSize;
-                        } else {
-                            break;
-                        }
-                    }
-                    
-                    setAllWords(allData);
-                    setLoading(false);
-                };
-
-                fetchAllWords();
-            }, []);
-
-            const filteredWords = useMemo(() => {
-    const lowerCaseSearchTerm = searchTerm.toLowerCase();
-
-    return allWords.filter(word =>
-        word.macuxi &&
-        word.macuxi.toLowerCase().startsWith(lowerCaseSearchTerm)
+    // ✅ Button corrigido: usa o onClick recebido por props
+    const Button = ({ onClick, children, className, type = "button" }) => (
+      <button
+        type={type}
+        onClick={onClick}
+        className={`font-bold py-2 px-4 rounded-lg transition-colors ${className}`}
+      >
+        {children}
+      </button>
     );
 
-}, [searchTerm, allWords]);
-            
-            const [selectedWord, setSelectedWord] = useState(null);
+    // =================================================================================
+    // COMPONENTES PRINCIPAIS DA APLICAÇÃO
+    // =================================================================================
+    const Header = ({ onBackToHome }) => (
+      <header className="bg-[#8B4513] text-white p-4 shadow-md flex justify-between items-center">
+        <h1 className="text-xl md:text-2xl font-bold">Dicionário Macuxi</h1>
+        <Button onClick={onBackToHome} className="text-sm hover:underline">Voltar ao Início</Button>
+      </header>
+    );
 
-            useEffect(() => {
-                if (filteredWords.length > 0) {
-                    setSelectedWord(filteredWords[0]);
-                } else {
-                    setSelectedWord(null);
-                }
-            }, [filteredWords]);
+    const WordList = ({ words, onSelectWord, selectedWord, loading, error }) => (
+      <div className="md:col-span-1 bg-white p-6 rounded-2xl shadow-lg h-full max-h-[70vh] overflow-y-auto">
+        <h2 className="text-2xl font-bold mb-4 border-b-2 border-gray-200 pb-2">Palavras</h2>
+        {loading && <p className="text-gray-500">A carregar palavras...</p>}
+        {error && <p className="text-red-600 font-semibold">{error}</p>}
 
-            return (
-                <div className="bg-[#f4f1e9] min-h-screen text-gray-800">
-                    <Header onBackToHome={onBackToHome} />
-                    <main className="container mx-auto p-4 md:p-8">
-                        <div className="mb-8">
-                            <div className="relative">
-                                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar em Macuxi ou Português..." className="w-full p-4 pr-10 border-2 border-gray-300 rounded-full focus:outline-none focus:border-[#8B4513] focus:ring-1 focus:ring-[#8B4513]" />
-                                <Icon name="search" />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <WordList words={filteredWords} onSelectWord={setSelectedWord} selectedWord={selectedWord} loading={loading} error={error} />
-                            <WordDetail word={selectedWord} />
-                        </div>
-                    </main>
+        {!loading && !error && (
+          <div className="space-y-2">
+            {words.length > 0 ? (
+              words.map(word => (
+                <div
+                  key={word.id}
+                  onClick={() => onSelectWord(word)}
+                  className={`p-4 rounded-lg cursor-pointer border transition-all duration-200 ${
+                    selectedWord && selectedWord.id === word.id
+                      ? 'bg-yellow-100 border-yellow-300'
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <h3 className="font-bold text-lg text-[#8B4513] flex items-center">
+                    {word.macuxi}
+                    {word.audio_url && <Icon name="volume" />}
+                  </h3>
+                  <p className="text-gray-600">{word.traducao_portugues}</p>
                 </div>
-            );
+              ))
+            ) : (
+              <p className="text-gray-500">Nenhuma palavra encontrada.</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+
+    const WordDetail = ({ word }) => {
+      if (!word) {
+        return (
+          <div className="md:col-span-2 bg-white p-8 rounded-2xl shadow-lg flex items-center justify-center">
+            <p className="text-xl text-gray-500">Selecione uma palavra na lista.</p>
+          </div>
+        );
+      }
+
+      return (
+        <div className="md:col-span-2 bg-white p-8 rounded-2xl shadow-lg">
+          <div className="text-center mb-6">
+            <p className="text-lg font-semibold text-yellow-800 bg-yellow-200 rounded-full px-4 py-1 mb-4 inline-block">
+              {word.classe_gramatical}
+            </p>
+            <h2 className="text-5xl md:text-6xl font-bold text-[#8B4513] mb-2">{word.macuxi}</h2>
+            <p className="text-3xl text-gray-700">{word.traducao_portugues}</p>
+            {word.ingles && <p className="text-2xl text-gray-500 mt-1">({word.ingles})</p>}
+          </div>
+
+          {word.audio_url && (
+            <div className="mb-6">
+              <h3 className="font-bold text-lg mb-2 text-gray-700">Pronúncia</h3>
+              <audio controls key={word.id} className="w-full" src={word.audio_url}>
+                O seu navegador não suporta o elemento de áudio.
+              </audio>
+            </div>
+          )}
+
+          {(word.exemplo_macuxi || word.exemplo_portugues) && (
+            <div>
+              <h3 className="font-bold text-lg mb-2 text-gray-700">Exemplo de Uso</h3>
+              <div className="bg-gray-100 p-4 rounded-lg text-left">
+                <p className="text-lg italic text-gray-800">"{word.exemplo_macuxi}"</p>
+                <p className="text-md text-gray-600 mt-1">"{word.exemplo_portugues}"</p>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const DictionaryPage = ({ onBackToHome, initialSearch, searchMode }) => {
+      const [allWords, setAllWords] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [searchTerm, setSearchTerm] = useState('');
+
+      useEffect(() => { setSearchTerm(initialSearch || ''); }, [initialSearch]);
+
+      useEffect(() => {
+        const fetchAllWords = async () => {
+          setLoading(true);
+          setError(null);
+
+          let allData = [];
+          let from = 0;
+          const chunkSize = 1000;
+
+          while (true) {
+            const { data, error: fetchError } = await supabaseClient
+              .from(config.tableName)
+              .select('*')
+              .order('macuxi', { ascending: true })
+              .range(from, from + chunkSize - 1);
+
+            if (fetchError) {
+              console.error('Erro ao buscar palavras:', fetchError);
+              setError(`Falha ao buscar palavras. Verifique o nome da tabela ('${config.tableName}') e as permissões (RLS).`);
+              setLoading(false);
+              return;
+            }
+
+            if (data) {
+              allData = [...allData, ...data];
+              if (data.length < chunkSize) break;
+              from += chunkSize;
+            } else {
+              break;
+            }
+          }
+
+          setAllWords(allData);
+          setLoading(false);
         };
 
-        const LandingPage = ({ onEnter }) => {
-            const alphabet = ['A', 'E', 'F', 'H', 'I', 'Î', 'K', 'M', 'N', 'O', 'P', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'];
-            const logos = [ 
-                { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/cnpq.jpeg", alt: "Logo CNPq" },
-                { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/lelli.png", alt: "Logo LEeLLI Cruz" },
-                { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/ppgl.jpeg", alt: "Logo PPgL" },
-                { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/insikiran.jpeg", alt: "Logo Insikiran" },
-                { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/ufrr.jpeg", alt: "Logo UFRR" },
-                { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/opirr.jpeg", alt: "Logo Opirr" }
-            ];
-            return (
-                <div className="bg-[#f4f1e9] min-h-screen flex flex-col">
-                    <header className="bg-[#8B4513] text-white p-6 shadow-md flex justify-center items-center">
-                        <h1 className="text-3xl md:text-4xl font-bold tracking-wider">Dicionário Macuxi</h1>
-                    </header>
-                    <main className="flex-grow container mx-auto flex flex-col justify-center items-center p-8 text-center">
-                        <div className="max-w-4xl w-full">
-                            <h2 className="text-2xl md:text-3xl font-semibold text-gray-800 mb-4">Bem-vindo ao portal da língua Macuxi</h2>
-                            <p className="text-lg text-gray-600 mb-8">Uma ferramenta para a preservação, estudo e celebração de uma das línguas maternas do Brasil.</p>
-                            <Button onClick={() => onEnter('')} className="bg-[#FFC107] text-[#8B4513] text-xl px-8 py-4 rounded-full shadow-lg hover:bg-yellow-500 transition-transform transform hover:scale-105 flex items-center mx-auto mb-12"><Icon name="book" /> Explorar o Dicionário Completo</Button>
-                            <div className="w-full"><div className="flex flex-wrap justify-center gap-3">{alphabet.map(letter => (<Button key={letter} onClick={() => onEnter(letter)} className="w-12 h-12 bg-[#8B4513] text-white text-lg rounded-md shadow-md hover:bg-[#a0522d] transition-transform transform hover:scale-110">{letter}</Button>))}</div></div>
-                        </div>
-                    </main>
-                    <footer className="bg-white/50 backdrop-blur-sm p-6 mt-8"><div className="container mx-auto"><p className="text-center text-gray-600 mb-4">Apoio:</p><div className="flex flex-wrap justify-center items-center gap-6 md:gap-8">{logos.map((logo, index) => (<img key={index} src={logo.src} alt={logo.alt} className="h-12 md:h-14 opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all" />))}</div></div></footer>
-                </div>
-            );
-        };
+        fetchAllWords();
+      }, []);
 
-        // --- COMPONENTE PRINCIPAL ---
-       const App = () => {
-    const [currentPage, setCurrentPage] = useState('landing');
-    const [initialSearch, setInitialSearch] = useState('');
-    const [searchMode, setSearchMode] = useState('all');
+      // ✅ FILTRO CORRIGIDO COM searchMode
+      const filteredWords = useMemo(() => {
+        const term = (searchTerm || '').toLowerCase().trim();
 
-            const pageRender = () => {
-                switch(currentPage) {
-                    case 'dictionary':
-                        return <DictionaryPage onBackToHome={() => setCurrentPage('landing')} initialSearch={initialSearch} />;
-                    default:
-                        return <LandingPage onEnter={(letter) => { setInitialSearch(letter); setCurrentPage('dictionary'); }} />;
-                }
-            };
+        if (!term) return allWords;
 
-            return <div>{pageRender()}</div>;
+        // Clique no alfabeto => somente Macuxi e começa com a letra
+        if (searchMode === 'macuxi') {
+          return allWords.filter(word =>
+            word.macuxi && word.macuxi.toLowerCase().startsWith(term)
+          );
         }
 
-        const container = document.getElementById('root');
-        const root = ReactDOM.createRoot(container);
-        root.render(<App />);
+        // Digitação livre => busca em Macuxi + Português (contains)
+        return allWords.filter(word =>
+          (word.macuxi && word.macuxi.toLowerCase().includes(term)) ||
+          (word.traducao_portugues && word.traducao_portugues.toLowerCase().includes(term))
+        );
+      }, [searchTerm, allWords, searchMode]);
 
-    </script>
+      const [selectedWord, setSelectedWord] = useState(null);
+
+      useEffect(() => {
+        if (filteredWords.length > 0) setSelectedWord(filteredWords[0]);
+        else setSelectedWord(null);
+      }, [filteredWords]);
+
+      return (
+        <div className="bg-[#f4f1e9] min-h-screen text-gray-800">
+          <Header onBackToHome={onBackToHome} />
+
+          <main className="container mx-auto p-4 md:p-8">
+            <div className="mb-8">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar em Macuxi ou Português..."
+                  className="w-full p-4 pr-10 border-2 border-gray-300 rounded-full focus:outline-none focus:border-[#8B4513] focus:ring-1 focus:ring-[#8B4513]"
+                />
+                <Icon name="search" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <WordList
+                words={filteredWords}
+                onSelectWord={setSelectedWord}
+                selectedWord={selectedWord}
+                loading={loading}
+                error={error}
+              />
+              <WordDetail word={selectedWord} />
+            </div>
+          </main>
+        </div>
+      );
+    };
+
+    const LandingPage = ({ onEnter }) => {
+      const alphabet = ['A', 'E', 'F', 'H', 'I', 'Î', 'K', 'M', 'N', 'O', 'P', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'];
+
+      const logos = [
+        { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/cnpq.jpeg", alt: "Logo CNPq" },
+        { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/lelli.png", alt: "Logo LEeLLI Cruz" },
+        { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/ppgl.jpeg", alt: "Logo PPgL" },
+        { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/insikiran.jpeg", alt: "Logo Insikiran" },
+        { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/ufrr.jpeg", alt: "Logo UFRR" },
+        { src: "https://bdxontyzmzxulxdspcfy.supabase.co/storage/v1/object/public/logos/opirr.jpeg", alt: "Logo Opirr" }
+      ];
+
+      return (
+        <div className="bg-[#f4f1e9] min-h-screen flex flex-col">
+          <header className="bg-[#8B4513] text-white p-6 shadow-md flex justify-center items-center">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-wider">Dicionário Macuxi</h1>
+          </header>
+
+          <main className="flex-grow container mx-auto flex flex-col justify-center items-center p-8 text-center">
+            <div className="max-w-4xl w-full">
+              <h2 className="text-2xl md:text-3xl font-semibold text-gray-800 mb-4">
+                Bem-vindo ao portal da língua Macuxi
+              </h2>
+              <p className="text-lg text-gray-600 mb-8">
+                Uma ferramenta para a preservação, estudo e celebração de uma das línguas maternas do Brasil.
+              </p>
+
+              <Button
+                onClick={() => onEnter('')}
+                className="bg-[#FFC107] text-[#8B4513] text-xl px-8 py-4 rounded-full shadow-lg hover:bg-yellow-500 transition-transform transform hover:scale-105 flex items-center mx-auto mb-12"
+              >
+                <Icon name="book" /> Explorar o Dicionário Completo
+              </Button>
+
+              <div className="w-full">
+                <div className="flex flex-wrap justify-center gap-3">
+                  {alphabet.map(letter => (
+                    <Button
+                      key={letter}
+                      onClick={() => onEnter(letter)}
+                      className="w-12 h-12 bg-[#8B4513] text-white text-lg rounded-md shadow-md hover:bg-[#a0522d] transition-transform transform hover:scale-110"
+                    >
+                      {letter}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </main>
+
+          <footer className="bg-white/50 backdrop-blur-sm p-6 mt-8">
+            <div className="container mx-auto">
+              <p className="text-center text-gray-600 mb-4">Apoio:</p>
+              <div className="flex flex-wrap justify-center items-center gap-6 md:gap-8">
+                {logos.map((logo, index) => (
+                  <img
+                    key={index}
+                    src={logo.src}
+                    alt={logo.alt}
+                    className="h-12 md:h-14 opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all"
+                  />
+                ))}
+              </div>
+            </div>
+          </footer>
+        </div>
+      );
+    };
+
+    // --- APP ---
+    const App = () => {
+      const [currentPage, setCurrentPage] = useState('landing');
+      const [initialSearch, setInitialSearch] = useState('');
+      const [searchMode, setSearchMode] = useState('all');
+
+      const pageRender = () => {
+        switch (currentPage) {
+          case 'dictionary':
+            return (
+              <DictionaryPage
+                onBackToHome={() => setCurrentPage('landing')}
+                initialSearch={initialSearch}
+                searchMode={searchMode}
+              />
+            );
+
+          default:
+            return (
+              <LandingPage
+                onEnter={(letter) => {
+                  setInitialSearch(letter);
+
+                  // ✅ letra clicada => macuxi; botão completo => all
+                  if (letter) setSearchMode('macuxi');
+                  else setSearchMode('all');
+
+                  setCurrentPage('dictionary');
+                }}
+              />
+            );
+        }
+      };
+
+      return <div>{pageRender()}</div>;
+    };
+
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+  </script>
 </body>
 </html>
