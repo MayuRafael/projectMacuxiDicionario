@@ -602,6 +602,25 @@ const AdminPanel = ({ onBackToHome }) => {
     const [msg, setMsg] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const [showReset, setShowReset] = useState(false);
+    const [resetEmail, setResetEmail] = useState('');
+    const [resetMsg, setResetMsg] = useState('');
+
+const handleReset = async () => {
+  if (!resetEmail.trim()) {
+    setResetMsg('Digite seu email.');
+    return;
+  }
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(resetEmail, {
+    redirectTo: window.location.origin
+  });
+  if (error) {
+    setResetMsg('Erro: ' + error.message);
+  } else {
+    setResetMsg('✅ Email enviado! Verifique sua caixa de entrada.');
+  }
+};
+
   const handleLogin = async () => {
   setLoading(true);
   setMsg('');
@@ -687,8 +706,56 @@ const AdminPanel = ({ onBackToHome }) => {
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </Button>
-        </div>
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setShowReset(true)}
+              className="text-sm text-[#8B4513] underline hover:text-[#a0522d]"
+            >
+              Esqueci minha senha
+            </button>
+          </div>
+
+       </div>
       </main>
+
+      {/* ✅ MODAL ESQUECI A SENHA */}
+      {showReset && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold mb-4">Recuperar Senha</h2>
+            <p className="text-gray-600 text-sm mb-4">
+              Digite seu email e enviaremos um link para redefinir sua senha.
+            </p>
+            <input
+              type="email"
+              placeholder="seu@email.com"
+              value={resetEmail}
+              onChange={e => setResetEmail(e.target.value)}
+              className="w-full border-2 border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:border-[#8B4513]"
+            />
+            {resetMsg && (
+              <p className={`text-sm font-semibold mb-4 ${resetMsg.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>
+                {resetMsg}
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={handleReset}
+                className="flex-1 bg-[#8B4513] text-white font-bold py-3 rounded-lg hover:bg-[#a0522d]"
+              >
+                Enviar Email
+              </button>
+              <button
+                onClick={() => { setShowReset(false); setResetMsg(''); setResetEmail(''); }}
+                className="px-6 bg-gray-200 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-300"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
@@ -767,6 +834,74 @@ const AdminPanel = ({ onBackToHome }) => {
       );
     };
 
+const ResetPasswordPage = ({ onDone }) => {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [msg, setMsg] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleReset = async () => {
+    if (!password.trim()) { setMsg('Digite a nova senha.'); return; }
+    if (password.length < 6) { setMsg('A senha deve ter pelo menos 6 caracteres.'); return; }
+    if (password !== confirm) { setMsg('As senhas não coincidem.'); return; }
+
+    const { error } = await supabaseClient.auth.updateUser({ password });
+    if (error) {
+      setMsg('Erro: ' + error.message);
+    } else {
+      setSuccess(true);
+      setTimeout(onDone, 2000);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f4f1e9] flex flex-col">
+      <header className="bg-[#8B4513] text-white p-6 shadow-md flex justify-center">
+        <h1 className="text-2xl font-bold">Dicionário Macuxi Multimídia</h1>
+      </header>
+      <main className="flex-grow flex items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
+          <h2 className="text-2xl font-bold mb-2 text-gray-800">Redefinir Senha</h2>
+          <p className="text-gray-500 text-sm mb-6">Digite e confirme sua nova senha.</p>
+
+          {success ? (
+            <div className="text-center">
+              <p className="text-green-600 font-bold text-lg">✅ Senha alterada com sucesso!</p>
+              <p className="text-gray-500 text-sm mt-2">Redirecionando...</p>
+            </div>
+          ) : (
+            <>
+              <label className="block text-sm font-semibold mb-1 text-gray-700">Nova senha</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full border-2 border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:border-[#8B4513]"
+              />
+              <label className="block text-sm font-semibold mb-1 text-gray-700">Confirmar senha</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+                className="w-full border-2 border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:border-[#8B4513]"
+              />
+              {msg && <p className="text-red-600 text-sm font-semibold mb-4">{msg}</p>}
+              <button
+                onClick={handleReset}
+                className="w-full bg-[#8B4513] text-white font-bold py-3 rounded-lg hover:bg-[#a0522d]"
+              >
+                Salvar Nova Senha
+              </button>
+            </>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+};
+
     // --- APP ---
 const App = () => {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -778,9 +913,17 @@ const App = () => {
 
   // ✅ mantém login ao recarregar + escuta mudanças
 
-  useEffect(() => {
+ useEffect(() => {
+  // ✅ Detecta retorno do link de redefinição de senha
+  const hash = window.location.hash;
+  if (hash.includes('type=recovery')) {
+    setCurrentPage('reset-password');
+  }
+
   const { data: sub } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-    if (session?.user?.id) {
+    if (_event === 'PASSWORD_RECOVERY') {
+      setCurrentPage('reset-password');
+    } else if (session?.user?.id) {
       isUserAdmin(session.user.id).then(setIsAdmin);
     } else {
       setIsAdmin(false);
@@ -801,6 +944,9 @@ const App = () => {
       onSearchModeChange={setSearchMode}
     />
   );
+
+      case 'reset-password':
+      return <ResetPasswordPage onDone={() => setCurrentPage('landing')} />;
 
       case 'admin':
         return isAdmin ? (
