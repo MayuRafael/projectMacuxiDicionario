@@ -31,6 +31,18 @@
   <div id="root"></div>
 
   <script type="text/babel">
+    async function isUserAdmin(userId) {
+        if (!userId) return false;
+
+        const { data, error } = await supabaseClient
+            .from('admins')
+            .select('user_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (error) return false;
+        return !!data;
+}
     const { useState, useEffect, useMemo } = React;
     const { createClient } = supabase;
 
@@ -96,7 +108,7 @@
     // =================================================================================
     const Header = ({ onBackToHome }) => (
       <header className="bg-[#8B4513] text-white p-4 shadow-md flex justify-between items-center">
-        <h1 className="text-xl md:text-2xl font-bold">Dicionário Macuxi</h1>
+        <h1 className="text-xl md:text-2xl font-bold">Dicionário Macuxi Multimídia</h1>
         <Button onClick={onBackToHome} className="text-sm hover:underline">Voltar ao Início</Button>
       </header>
     );
@@ -177,7 +189,7 @@
       );
     };
 
-    const DictionaryPage = ({ onBackToHome, initialSearch, searchMode }) => {
+    const DictionaryPage = ({ onBackToHome, initialSearch, searchMode, onSearchModeChange }) => {
       const [allWords, setAllWords] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
@@ -261,7 +273,10 @@
                 <input
                   type="text"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {setSearchTerm(e.target.value);
+                        onSearchModeChange('all');
+                        }}
+                        
                   placeholder="Buscar em Macuxi ou Português..."
                   className="w-full p-4 pr-10 border-2 border-gray-300 rounded-full focus:outline-none focus:border-[#8B4513] focus:ring-1 focus:ring-[#8B4513]"
                 />
@@ -283,8 +298,403 @@
         </div>
       );
     };
+const emptyVerbete = {
+  macuxi: '',
+  classe_gramatical: '',
+  traducao_portugues: '',
+  exemplo_macuxi: '',
+  exemplo_portugues: '',
+  ingles: '',
+  audio_url: '',
+  categoria_id: ''
+};
 
-    const LandingPage = ({ onEnter }) => {
+const AdminPanel = ({ onBackToHome }) => {
+  const [items, setItems] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [form, setForm] = useState(emptyVerbete);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [q, setQ] = useState('');
+
+  const fetchItems = async () => {
+    setLoading(true);
+    setError('');
+
+    const { data, error } = await supabaseClient
+      .from(config.tableName)
+      .select('*')
+      .order('macuxi', { ascending: true })
+      .limit(5000);
+
+    if (error) {
+      setError(`Erro ao carregar: ${error.message}`);
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    setItems(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const term = (q || '').toLowerCase().trim();
+    if (!term) return items;
+    return items.filter(it =>
+      (it.macuxi || '').toLowerCase().includes(term) ||
+      (it.traducao_portugues || '').toLowerCase().includes(term)
+    );
+  }, [q, items]);
+
+  const selectItem = (it) => {
+    setSelected(it);
+    setForm({
+      macuxi: it.macuxi || '',
+      classe_gramatical: it.classe_gramatical || '',
+      traducao_portugues: it.traducao_portugues || '',
+      exemplo_macuxi: it.exemplo_macuxi || '',
+      exemplo_portugues: it.exemplo_portugues || '',
+      ingles: it.ingles || '',
+      audio_url: it.audio_url || '',
+      categoria_id: it.categoria_id || ''
+    });
+  };
+
+  const newItem = () => {
+    setSelected(null);
+    setForm(emptyVerbete);
+  };
+
+  const onChange = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+
+  const save = async () => {
+    setSaving(true);
+    setError('');
+
+    // validações mínimas
+    if (!form.macuxi.trim()) {
+      setError('Preencha o campo Macuxi (obrigatório).');
+      setSaving(false);
+      return;
+    }
+    if (!form.traducao_portugues.trim()) {
+      setError('Preencha a Tradução em português (obrigatório).');
+      setSaving(false);
+      return;
+    }
+
+    // payload: evita mandar espaços
+    const payload = {
+      ...form,
+      macuxi: form.macuxi.trim(),
+      traducao_portugues: form.traducao_portugues.trim(),
+      classe_gramatical: form.classe_gramatical.trim(),
+      exemplo_macuxi: form.exemplo_macuxi.trim(),
+      exemplo_portugues: form.exemplo_portugues.trim(),
+      ingles: form.ingles.trim(),
+      audio_url: form.audio_url.trim(),
+      categoria_id: form.categoria_id.trim()
+    };
+
+    let res;
+
+    if (selected?.id) {
+      res = await supabaseClient
+        .from(config.tableName)
+        .update(payload)
+        .eq('id', selected.id)
+        .select()
+        .single();
+    } else {
+      res = await supabaseClient
+        .from(config.tableName)
+        .insert(payload)
+        .select()
+        .single();
+    }
+
+    if (res.error) {
+      setError(`Erro ao salvar: ${res.error.message}`);
+      setSaving(false);
+      return;
+    }
+
+    await fetchItems();
+    setSelected(res.data);
+    setSaving(false);
+  };
+
+  const remove = async () => {
+    if (!selected?.id) return;
+
+    const ok = confirm(`Excluir o verbete "${selected.macuxi}"?`);
+    if (!ok) return;
+
+    setSaving(true);
+    setError('');
+
+    const { error } = await supabaseClient
+      .from(config.tableName)
+      .delete()
+      .eq('id', selected.id);
+
+    if (error) {
+      setError(`Erro ao excluir: ${error.message}`);
+      setSaving(false);
+      return;
+    }
+
+    await fetchItems();
+    newItem();
+    setSaving(false);
+  };
+
+  const logout = async () => {
+    await supabaseClient.auth.signOut();
+    onBackToHome();
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f4f1e9] text-gray-800">
+      <header className="bg-[#8B4513] text-white p-4 shadow-md flex justify-between items-center">
+        <h1 className="text-xl font-bold">Painel Admin — Verbetes</h1>
+        <div className="flex gap-2">
+          <Button onClick={logout} className="text-sm hover:underline">Sair</Button>
+          <Button onClick={onBackToHome} className="text-sm hover:underline">Voltar</Button>
+        </div>
+      </header>
+
+      <main className="container mx-auto p-4 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* LISTA */}
+        <section className="bg-white p-4 rounded-2xl shadow-lg max-h-[75vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-bold text-lg">Lista</h2>
+            <Button onClick={newItem} className="bg-[#FFC107] text-[#8B4513] hover:bg-yellow-500">
+              + Novo
+            </Button>
+          </div>
+
+          <input
+            className="w-full border rounded-lg p-3 mb-3"
+            placeholder="Buscar por Macuxi ou Português..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+
+          {loading && <p className="text-gray-500">Carregando...</p>}
+          {error && <p className="text-red-600 font-semibold">{error}</p>}
+
+          {!loading && (
+            <div className="space-y-2">
+              {filtered.map(it => (
+                <div
+                  key={it.id}
+                  onClick={() => selectItem(it)}
+                  className={`p-3 rounded-lg border cursor-pointer ${
+                    selected?.id === it.id
+                      ? 'bg-yellow-100 border-yellow-300'
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="font-bold text-[#8B4513]">{it.macuxi}</div>
+                  <div className="text-sm text-gray-600">{it.traducao_portugues}</div>
+                </div>
+              ))}
+
+              {!filtered.length && <p className="text-gray-500">Nenhum verbete encontrado.</p>}
+            </div>
+          )}
+        </section>
+
+        {/* FORM */}
+        <section className="md:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-lg">
+              {selected?.id ? `Editando: ${selected.macuxi}` : 'Criar novo verbete'}
+            </h2>
+
+            {selected?.id && (
+              <Button onClick={remove} className="bg-red-600 text-white hover:bg-red-700">
+                Excluir
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-semibold">Macuxi *</label>
+              <input className="w-full border rounded-lg p-3"
+                value={form.macuxi} onChange={(e) => onChange('macuxi', e.target.value)} />
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold">Tradução (PT) *</label>
+              <input className="w-full border rounded-lg p-3"
+                value={form.traducao_portugues} onChange={(e) => onChange('traducao_portugues', e.target.value)} />
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold">Classe gramatical</label>
+              <input className="w-full border rounded-lg p-3"
+                value={form.classe_gramatical} onChange={(e) => onChange('classe_gramatical', e.target.value)} />
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold">Inglês</label>
+              <input className="w-full border rounded-lg p-3"
+                value={form.ingles} onChange={(e) => onChange('ingles', e.target.value)} />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="text-sm font-semibold">Exemplo (Macuxi)</label>
+              <textarea className="w-full border rounded-lg p-3 min-h-[90px]"
+                value={form.exemplo_macuxi} onChange={(e) => onChange('exemplo_macuxi', e.target.value)} />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="text-sm font-semibold">Exemplo (Português)</label>
+              <textarea className="w-full border rounded-lg p-3 min-h-[90px]"
+                value={form.exemplo_portugues} onChange={(e) => onChange('exemplo_portugues', e.target.value)} />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="text-sm font-semibold">Audio URL</label>
+              <input className="w-full border rounded-lg p-3"
+                value={form.audio_url} onChange={(e) => onChange('audio_url', e.target.value)} />
+              <p className="text-xs text-gray-500 mt-1">
+                Fase 2: vamos adicionar upload direto para o Storage.
+              </p>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="text-sm font-semibold">Categoria ID</label>
+              <input className="w-full border rounded-lg p-3"
+                value={form.categoria_id} onChange={(e) => onChange('categoria_id', e.target.value)} />
+            </div>
+          </div>
+
+          {error && <p className="text-red-600 font-semibold mt-4">{error}</p>}
+
+          <div className="mt-5 flex gap-2">
+            <Button onClick={save} className="bg-[#8B4513] text-white hover:bg-[#a0522d]">
+              {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+
+            <Button onClick={newItem} className="bg-gray-200 text-gray-800 hover:bg-gray-300">
+              Limpar
+            </Button>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+};
+    const AdminLogin = ({ onBackToHome, onLoginSuccess }) => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [msg, setMsg] = useState('');
+    const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+  setLoading(true);
+  setMsg('');
+
+  try {
+    // 1) Login
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      setMsg('Falha no login: ' + error.message);
+      return;
+    }
+
+    const userId = data?.user?.id || data?.session?.user?.id;
+    if (!userId) {
+      setMsg('Login OK, mas não consegui obter o userId.');
+      return;
+    }
+
+    // 2) Checagem admin (vamos expor o erro real)
+    const { data: adminRow, error: adminErr } = await supabaseClient
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (adminErr) {
+      setMsg('Erro ao verificar permissão (admins): ' + adminErr.message);
+      return;
+    }
+
+    if (!adminRow) {
+      await supabaseClient.auth.signOut();
+      setMsg('Você entrou, mas NÃO tem permissão de admin (não está na tabela admins).');
+      return;
+    }
+
+    // 3) Sucesso
+    onLoginSuccess();
+  } catch (e) {
+    setMsg('Erro inesperado: ' + (e?.message || String(e)));
+  } finally {
+    setLoading(false);
+  }
+};
+
+  return (
+    <div className="min-h-screen bg-[#f4f1e9] flex flex-col">
+      <header className="bg-[#8B4513] text-white p-4 shadow-md flex justify-between items-center">
+        <h1 className="text-xl font-bold">Área Admin</h1>
+        <Button onClick={onBackToHome} className="text-sm hover:underline">Voltar</Button>
+      </header>
+
+      <main className="container mx-auto p-6 max-w-xl">
+        <div className="bg-white p-6 rounded-2xl shadow-lg">
+          <h2 className="text-2xl font-bold mb-4">Entrar</h2>
+
+          <label className="block text-sm font-semibold mb-1">Email</label>
+          <input
+            className="w-full border rounded-lg p-3 mb-4"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="seu@email.com"
+          />
+
+          <label className="block text-sm font-semibold mb-1">Senha</label>
+          <input
+            type="password"
+            className="w-full border rounded-lg p-3 mb-4"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+
+          {msg && <p className="mb-4 text-red-600 font-semibold">{msg}</p>}
+
+          <Button
+            onClick={handleLogin}
+            className="w-full bg-[#8B4513] text-white hover:bg-[#a0522d]"
+          >
+            {loading ? 'Entrando...' : 'Entrar'}
+          </Button>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+
+    const LandingPage = ({ onEnter, onAdmin }) => {
       const alphabet = ['A', 'E', 'F', 'H', 'I', 'Î', 'K', 'M', 'N', 'O', 'P', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'];
 
       const logos = [
@@ -298,17 +708,21 @@
 
       return (
         <div className="bg-[#f4f1e9] min-h-screen flex flex-col">
-          <header className="bg-[#8B4513] text-white p-6 shadow-md flex justify-center items-center">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-wider">Dicionário Macuxi</h1>
-          </header>
+          <header className="bg-[#8B4513] text-white p-6 shadow-md flex justify-between items-center">
+        <div></div>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-wider">Dicionário Macuxi Multimídia</h1>
+        <Button onClick={onAdmin} className="text-sm underline text-white hover:text-yellow-300">
+    Área Admin
+  </Button>
+</header>
 
           <main className="flex-grow container mx-auto flex flex-col justify-center items-center p-8 text-center">
             <div className="max-w-4xl w-full">
               <h2 className="text-2xl md:text-3xl font-semibold text-gray-800 mb-4">
-                Bem-vindo ao portal da língua Macuxi
+                Morîîpe Aisakon
               </h2>
               <p className="text-lg text-gray-600 mb-8">
-                Uma ferramenta para a preservação, estudo e celebração de uma das línguas maternas do Brasil.
+                Sejam bem vindos!
               </p>
 
               <Button
@@ -354,41 +768,67 @@
     };
 
     // --- APP ---
-    const App = () => {
-      const [currentPage, setCurrentPage] = useState('landing');
-      const [initialSearch, setInitialSearch] = useState('');
-      const [searchMode, setSearchMode] = useState('all');
+const App = () => {
+  const [currentPage, setCurrentPage] = useState('landing');
+  const [initialSearch, setInitialSearch] = useState('');   // ✅ era false
+  const [searchMode, setSearchMode] = useState('all');
 
-      const pageRender = () => {
-        switch (currentPage) {
-          case 'dictionary':
-            return (
-              <DictionaryPage
-                onBackToHome={() => setCurrentPage('landing')}
-                initialSearch={initialSearch}
-                searchMode={searchMode}
-              />
-            );
+  // ✅ faltava isso:
+  const [isAdmin, setIsAdmin] = useState(false);
 
-          default:
-            return (
-              <LandingPage
-                onEnter={(letter) => {
-                  setInitialSearch(letter);
+  // ✅ mantém login ao recarregar + escuta mudanças
 
-                  // ✅ letra clicada => macuxi; botão completo => all
-                  if (letter) setSearchMode('macuxi');
-                  else setSearchMode('all');
+  useEffect(() => {
+  const { data: sub } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+    if (session?.user?.id) {
+      isUserAdmin(session.user.id).then(setIsAdmin);
+    } else {
+      setIsAdmin(false);
+    }
+  });
 
-                  setCurrentPage('dictionary');
-                }}
-              />
-            );
-        }
-      };
+  return () => sub?.subscription?.unsubscribe();
+}, []);
 
-      return <div>{pageRender()}</div>;
-    };
+  const pageRender = () => {
+    switch (currentPage) {
+      case 'dictionary':
+  return (
+    <DictionaryPage
+      onBackToHome={() => setCurrentPage('landing')}
+      initialSearch={initialSearch}
+      searchMode={searchMode}
+      onSearchModeChange={setSearchMode}
+    />
+  );
+
+      case 'admin':
+        return isAdmin ? (
+          <AdminPanel onBackToHome={() => setCurrentPage('landing')} />
+        ) : (
+          <AdminLogin
+            onBackToHome={() => setCurrentPage('landing')}
+            onLoginSuccess={() => setIsAdmin(true)}
+          />
+        );
+
+      default:
+        return (
+          <LandingPage
+            onEnter={(letter) => {
+              setInitialSearch(letter);
+              if (letter) setSearchMode('macuxi');
+              else setSearchMode('all');
+              setCurrentPage('dictionary');
+            }}
+            onAdmin={() => setCurrentPage('admin')}
+          />
+        );
+    }
+  };
+
+  return <div>{pageRender()}</div>;
+};
 
     const container = document.getElementById('root');
     const root = ReactDOM.createRoot(container);
