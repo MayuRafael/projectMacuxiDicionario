@@ -259,7 +259,9 @@
     // =================================================================================
     const emptyVerbete = {
       macuxi: '', classe_gramatical: '', traducao_portugues: '',
-      exemplo_macuxi: '', exemplo_portugues: '', ingles: '', audio_url: '', categoria_id: ''
+      definicao_macuxi: '', definicao_portugues: '',
+      exemplo_macuxi: '', exemplo_portugues: '', ingles: '',
+      audio_url: '', imagem: '', show_image: false, categoria_id: ''
     };
 
     const AdminPanel = ({ onBackToHome }) => {
@@ -279,6 +281,25 @@
       const [letra, setLetra] = useState('A');
 
       const alfabeto = ['A', 'E', 'F', 'H', 'I', 'Î', 'K', 'M', 'N', 'O', 'P', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'];
+      const [categorias, setCategorias] = useState([]);
+      const [uploadingAudio, setUploadingAudio] = useState(false);
+      const [uploadingImagem, setUploadingImagem] = useState(false);
+
+      useEffect(() => {
+        supabaseClient.from('categorias').select('id, nome').order('nome', { ascending: true })
+          .then(({ data }) => { if (data) setCategorias(data); });
+      }, []);
+
+      const uploadArquivo = async (file, bucket, pasta, setUploading, campo) => {
+        if (!file) return;
+        setUploading(true);
+        const nomeArq = `${pasta}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+        const { error } = await supabaseClient.storage.from(bucket).upload(nomeArq, file, { upsert: true });
+        if (error) { setError(`Erro no upload: ${error.message}`); setUploading(false); return; }
+        const { data: urlData } = supabaseClient.storage.from(bucket).getPublicUrl(nomeArq);
+        onChange(campo, urlData.publicUrl);
+        setUploading(false);
+      };
 
       // silent=true: atualiza os dados sem exibir "Carregando..."
       // Busca em blocos de 1000 porque o Supabase limita cada requisição a 1000 linhas.
@@ -340,9 +361,12 @@
 
       const preencherForm = (it) => setForm({
         macuxi: it.macuxi || '', classe_gramatical: it.classe_gramatical || '',
-        traducao_portugues: it.traducao_portugues || '', exemplo_macuxi: it.exemplo_macuxi || '',
+        traducao_portugues: it.traducao_portugues || '',
+        definicao_macuxi: it.definicao_macuxi || '', definicao_portugues: it.definicao_portugues || '',
+        exemplo_macuxi: it.exemplo_macuxi || '',
         exemplo_portugues: it.exemplo_portugues || '', ingles: it.ingles || '',
-        audio_url: it.audio_url || '', categoria_id: it.categoria_id || ''
+        audio_url: it.audio_url || '', imagem: it.imagem || '',
+        show_image: it.show_image || false, categoria_id: it.categoria_id || ''
       });
 
       const selectItem = (it) => {
@@ -391,11 +415,18 @@
         if (!form.traducao_portugues.trim()) { setError('Preencha a Tradução em português (obrigatório).'); setSaving(false); return; }
 
         const payload = {
-          ...form,
-          macuxi: form.macuxi.trim(), traducao_portugues: form.traducao_portugues.trim(),
-          classe_gramatical: form.classe_gramatical.trim(), exemplo_macuxi: form.exemplo_macuxi.trim(),
-          exemplo_portugues: form.exemplo_portugues.trim(), ingles: form.ingles.trim(),
-          audio_url: form.audio_url.trim(), categoria_id: form.categoria_id.trim()
+          macuxi: form.macuxi.trim(),
+          traducao_portugues: form.traducao_portugues.trim(),
+          classe_gramatical: form.classe_gramatical.trim(),
+          definicao_macuxi: form.definicao_macuxi.trim(),
+          definicao_portugues: form.definicao_portugues.trim(),
+          exemplo_macuxi: form.exemplo_macuxi.trim(),
+          exemplo_portugues: form.exemplo_portugues.trim(),
+          ingles: form.ingles.trim(),
+          audio_url: form.audio_url.trim(),
+          imagem: form.imagem.trim(),
+          show_image: form.show_image,
+          categoria_id: form.categoria_id || null
         };
 
         let res;
@@ -621,44 +652,105 @@
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
                     <div>
-                      <label className="text-sm font-semibold">Macuxi *</label>
-                      <input className="w-full border rounded-lg p-3" value={form.macuxi} onChange={(e) => onChange('macuxi', e.target.value)} />
+                      <label className="text-sm font-semibold text-gray-700">Macuxi *</label>
+                      <input className="w-full border rounded-lg p-3 mt-1" value={form.macuxi} onChange={(e) => onChange('macuxi', e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-sm font-semibold">Tradução (PT) *</label>
-                      <input className="w-full border rounded-lg p-3" value={form.traducao_portugues} onChange={(e) => onChange('traducao_portugues', e.target.value)} />
+                      <label className="text-sm font-semibold text-gray-700">Tradução (PT) *</label>
+                      <input className="w-full border rounded-lg p-3 mt-1" value={form.traducao_portugues} onChange={(e) => onChange('traducao_portugues', e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-sm font-semibold">Classe gramatical</label>
-                      <input className="w-full border rounded-lg p-3" value={form.classe_gramatical} onChange={(e) => onChange('classe_gramatical', e.target.value)} />
+                      <label className="text-sm font-semibold text-gray-700">Classe gramatical</label>
+                      <input className="w-full border rounded-lg p-3 mt-1" placeholder="ex: substantivo, verbo..." value={form.classe_gramatical} onChange={(e) => onChange('classe_gramatical', e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-sm font-semibold">Inglês</label>
-                      <input className="w-full border rounded-lg p-3" value={form.ingles} onChange={(e) => onChange('ingles', e.target.value)} />
+                      <label className="text-sm font-semibold text-gray-700">Inglês</label>
+                      <input className="w-full border rounded-lg p-3 mt-1" value={form.ingles} onChange={(e) => onChange('ingles', e.target.value)} />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="text-sm font-semibold">Exemplo (Macuxi)</label>
-                      <textarea className="w-full border rounded-lg p-3 min-h-[90px]" value={form.exemplo_macuxi} onChange={(e) => onChange('exemplo_macuxi', e.target.value)} />
+                      <label className="text-sm font-semibold text-gray-700">Categoria</label>
+                      <select className="w-full border rounded-lg p-3 mt-1 bg-white" value={form.categoria_id} onChange={(e) => onChange('categoria_id', e.target.value)}>
+                        <option value="">— Sem categoria —</option>
+                        {categorias.map(c => (
+                          <option key={c.id} value={c.id}>{c.nome}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-2 border-t border-gray-100 pt-4 mt-1">
+                      <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Definições</p>
                     </div>
                     <div className="md:col-span-2">
-                      <label className="text-sm font-semibold">Exemplo (Português)</label>
-                      <textarea className="w-full border rounded-lg p-3 min-h-[90px]" value={form.exemplo_portugues} onChange={(e) => onChange('exemplo_portugues', e.target.value)} />
+                      <label className="text-sm font-semibold text-gray-700">Definição em Macuxi</label>
+                      <textarea className="w-full border rounded-lg p-3 mt-1 min-h-[80px]" value={form.definicao_macuxi} onChange={(e) => onChange('definicao_macuxi', e.target.value)} />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="text-sm font-semibold">Audio URL</label>
-                      <input className="w-full border rounded-lg p-3" value={form.audio_url} onChange={(e) => onChange('audio_url', e.target.value)} />
-                      {form.audio_url && (
-                        <audio controls src={form.audio_url} className="w-full mt-2">
-                          O seu navegador não suporta o elemento de áudio.
-                        </audio>
+                      <label className="text-sm font-semibold text-gray-700">Definição em Português</label>
+                      <textarea className="w-full border rounded-lg p-3 mt-1 min-h-[80px]" value={form.definicao_portugues} onChange={(e) => onChange('definicao_portugues', e.target.value)} />
+                    </div>
+
+                    <div className="md:col-span-2 border-t border-gray-100 pt-4 mt-1">
+                      <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Exemplos de uso</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-sm font-semibold text-gray-700">Exemplo (Macuxi)</label>
+                      <textarea className="w-full border rounded-lg p-3 mt-1 min-h-[80px]" value={form.exemplo_macuxi} onChange={(e) => onChange('exemplo_macuxi', e.target.value)} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-sm font-semibold text-gray-700">Exemplo (Português)</label>
+                      <textarea className="w-full border rounded-lg p-3 mt-1 min-h-[80px]" value={form.exemplo_portugues} onChange={(e) => onChange('exemplo_portugues', e.target.value)} />
+                    </div>
+
+                    <div className="md:col-span-2 border-t border-gray-100 pt-4 mt-1">
+                      <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Áudio</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-sm font-semibold text-gray-700">Arquivo de áudio</label>
+                      <div className="flex items-center gap-3 mt-2">
+                        <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${uploadingAudio ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#8B4513] text-white hover:bg-[#a0522d]'}`}>
+                          {uploadingAudio ? 'Enviando...' : '🎵 Enviar áudio'}
+                          <input type="file" accept="audio/*" className="hidden" disabled={uploadingAudio}
+                            onChange={(e) => uploadArquivo(e.target.files[0], 'audios', 'verbetes', setUploadingAudio, 'audio_url')} />
+                        </label>
+                        {form.audio_url && <span className="text-xs text-green-600 font-semibold">✅ Áudio carregado</span>}
+                      </div>
+                      {form.audio_url && <audio controls src={form.audio_url} className="w-full mt-3" />}
+                      <div className="mt-2">
+                        <label className="text-xs text-gray-500">Ou cole a URL:</label>
+                        <input className="w-full border rounded-lg p-2 mt-1 text-sm" placeholder="https://..." value={form.audio_url} onChange={(e) => onChange('audio_url', e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2 border-t border-gray-100 pt-4 mt-1">
+                      <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Imagem pedagógica</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="flex items-center gap-2 cursor-pointer select-none mb-3">
+                        <input type="checkbox" checked={form.show_image} onChange={(e) => onChange('show_image', e.target.checked)} className="w-4 h-4 accent-[#8B4513]" />
+                        <span className="text-sm font-semibold text-gray-700">Exibir imagem no verbete</span>
+                        <span className="text-xs text-gray-400">(use apenas para conceitos concretos)</span>
+                      </label>
+                      {form.show_image && (
+                        <>
+                          <div className="flex items-center gap-3 mt-1">
+                            <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${uploadingImagem ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#8B4513] text-white hover:bg-[#a0522d]'}`}>
+                              {uploadingImagem ? 'Enviando...' : '🖼️ Enviar imagem'}
+                              <input type="file" accept="image/*" className="hidden" disabled={uploadingImagem}
+                                onChange={(e) => uploadArquivo(e.target.files[0], 'imagens', 'verbetes', setUploadingImagem, 'imagem')} />
+                            </label>
+                            {form.imagem && <span className="text-xs text-green-600 font-semibold">✅ Imagem carregada</span>}
+                          </div>
+                          {form.imagem && <img src={form.imagem} alt="Preview" className="mt-3 h-36 rounded-lg object-cover border border-gray-200" />}
+                          <div className="mt-2">
+                            <label className="text-xs text-gray-500">Ou cole a URL:</label>
+                            <input className="w-full border rounded-lg p-2 mt-1 text-sm" placeholder="https://..." value={form.imagem} onChange={(e) => onChange('imagem', e.target.value)} />
+                          </div>
+                        </>
                       )}
-                      <p className="text-xs text-gray-500 mt-1">Fase 2: upload direto para o Storage.</p>
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="text-sm font-semibold">Categoria ID</label>
-                      <input className="w-full border rounded-lg p-3" value={form.categoria_id} onChange={(e) => onChange('categoria_id', e.target.value)} />
-                    </div>
+
                   </div>
 
                   {error && <p className="text-red-600 font-semibold mt-4">{error}</p>}
