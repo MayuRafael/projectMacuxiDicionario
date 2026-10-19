@@ -405,12 +405,6 @@
         setTimeout(() => window.scrollTo(0, scrollPosRef.current), 0);
       };
 
-      const converterUrlGDrive = (url) => {
-        const m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)\//);
-        if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}`;
-        return url;
-      };
-
       const onChange = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
       const save = async () => {
@@ -725,7 +719,7 @@
                       {form.audio_url && <audio controls src={form.audio_url} className="w-full mt-3" />}
                       <div className="mt-2">
                         <label className="text-xs text-gray-500">Ou cole a URL:</label>
-                        <input className="w-full border rounded-lg p-2 mt-1 text-sm" placeholder="https://..." value={form.audio_url} onChange={(e) => onChange('audio_url', converterUrlGDrive(e.target.value))} />
+                        <input className="w-full border rounded-lg p-2 mt-1 text-sm" placeholder="https://..." value={form.audio_url} onChange={(e) => onChange('audio_url', e.target.value)} />
                       </div>
                     </div>
 
